@@ -8,31 +8,31 @@ key="$1"
 case $key in
     -hzv|--hazelcast-version)
     HZ_VERSION="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
     -v|--release-version)
     {RELEASE_VERSION}="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
     -gt|--github-token)
     {GITHUB_TOKEN}="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
     -s3a|--aws-s3-access-key)
     {AWS_S3_ACCESS_KEY}="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
     -s3k|--aws-s3-secret-key)
     {AWS_S3_SECRET_KEY}="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
 esac
 done
-set -- "${POSITIONAL[@]}" # restore positional parameters
+set -- "${POSITIONAL[@]}"
 
 echo RELEASE VERSION = "${RELEASE_VERSION}"
 echo HAZELCAST VERSION = "${HZ_VERSION}"
@@ -40,17 +40,13 @@ echo GITHUB TOKEN = "${GITHUB_TOKEN}"
 echo AWS_S3_ACCESS_KEY = "${AWS_S3_ACCESS_KEY}"
 echo AWS_S3_SECRET_KEY = "${AWS_S3_SECRET_KEY}"
 
-#ODB RELEASE FROM PIV_NET OR GITHUB
-# ROUTING_RELEASE_URL=https://github.com/cloudfoundry/routing-release/releases/download/0.174.0/routing-0.174.0.tgz
-
 HZ_EE_JAR_URL=https://repository-hazelcast-l337.forge.cloudbees.com/release/com/hazelcast/hazelcast-enterprise/${HZ_VERSION}/hazelcast-enterprise-${HZ_VERSION}.jar
 MC_WAR_URL=https://download.hazelcast.com/management-center/hazelcast-management-center-${HZ_VERSION}.zip
 
 pushd $HOME
-    echo "Clonning bosh-release and tile repos..."
+    echo "Clonning bosh-release repo"
     git config --global credential.helper cache
     git clone --recurse-submodules https://x-access-token:${GITHUB_TOKEN}@github.com/hazelcast/hazelcast-boshrelease.git || { echo "Check your GitHub Token!!" ; exit 1; }
-    #git clone https://${GITHUB_USERNAME}:${GITHUB_PASS}@github.com/hazelcast/hazelcast-pcf-tile.git
 
     echo "Downloading jar/war(s)..."
     if wget -q "$HZ_EE_JAR_URL"; then

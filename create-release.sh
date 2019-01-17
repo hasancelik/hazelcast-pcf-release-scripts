@@ -21,6 +21,11 @@ case $key in
     shift
     shift
     ;;
+    -ge|--github-email)
+    GITHUB EMAIL="$2"
+    shift
+    shift
+    ;;
     -prt|--pivnet-refresh-token)
     REFRESH_TOKEN="$2"
     shift
@@ -51,6 +56,7 @@ set -- "${POSITIONAL[@]}"
 echo RELEASE VERSION = "${RELEASE_VERSION}"
 echo HAZELCAST VERSION = "${HZ_VERSION}"
 echo GITHUB TOKEN = "${GITHUB_TOKEN}"
+echo GITHUB EMAIL = "${GITHUB_EMAIL}"
 echo REFRESH_TOKEN = "${REFRESH_TOKEN}"
 echo AWS S3 ACCESS KEY = "${AWS_S3_ACCESS_KEY}"
 echo AWS S3 SECRET KEY = "${AWS_S3_SECRET_KEY}"
@@ -66,6 +72,7 @@ pushd $HOME
     echo "Clonning bosh-release repo..."
     git config --global credential.helper cache
     git clone --recurse-submodules https://x-access-token:${GITHUB_TOKEN}@github.com/hazelcast/hazelcast-boshrelease.git || { echo "Check your GitHub Token!!" ; exit 1; }
+    git config --global user.email "${GITHUB_EMAIL}"
     echo "Clonning tile repo..."
     git clone https://x-access-token:${GITHUB_TOKEN}@github.com/hazelcast/hazelcast-pcf-tile.git || { echo "Check your GitHub Token!!" ; exit 1; }
 
@@ -125,11 +132,11 @@ pushd $HOME
             git tag v${RELEASE_VERSION}
             git push --tags
             echo "v${RELEASE_VERSION} pushed to master"
-        fi
 
-        echo "Creating release at hazelcast/hazelcast-boshrelease repo"
-        python ../create_release_upload_asset.py -r hazelcast/hazelcast-boshrelease -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz
-        echo "${RELEASE_VERSION} created and its assets are uploaded"
+            echo "Creating release at hazelcast/hazelcast-boshrelease repo"
+            python ../create_release_upload_asset.py -r hazelcast/hazelcast-boshrelease -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz
+            echo "${RELEASE_VERSION} created and its assets are uploaded"
+        fi
     popd
 
     if wget -q "$PIVNET_CLI_URL"; then

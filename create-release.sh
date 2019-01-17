@@ -21,11 +21,6 @@ case $key in
     shift
     shift
     ;;
-    -ge|--github-email)
-    GITHUB_EMAIL="$2"
-    shift
-    shift
-    ;;
     -prt|--pivnet-refresh-token)
     REFRESH_TOKEN="$2"
     shift
@@ -56,7 +51,6 @@ set -- "${POSITIONAL[@]}"
 echo RELEASE VERSION = "${RELEASE_VERSION}"
 echo HAZELCAST VERSION = "${HZ_VERSION}"
 echo GITHUB TOKEN = "${GITHUB_TOKEN}"
-echo GITHUB EMAIL = "${GITHUB_EMAIL}"
 echo REFRESH_TOKEN = "${REFRESH_TOKEN}"
 echo AWS S3 ACCESS KEY = "${AWS_S3_ACCESS_KEY}"
 echo AWS S3 SECRET KEY = "${AWS_S3_SECRET_KEY}"
@@ -66,16 +60,8 @@ HZ_EE_JAR_URL=https://repository-hazelcast-l337.forge.cloudbees.com/release/com/
 MC_WAR_URL=https://download.hazelcast.com/management-center/hazelcast-management-center-${HZ_VERSION}.zip
 
 ROUTING_RELEASE_URL=https://github.com/cloudfoundry/routing-release/releases/download/0.174.0/routing-0.174.0.tgz
-PIVNET_CLI_URL=https://github.com/pivotal-cf/pivnet-cli/releases/download/v0.0.55/pivnet-linux-amd64-0.0.55
 
 pushd $WORKSPACE
-    echo "Clonning bosh-release repo..."
-    git config --global credential.helper cache
-    git clone --recurse-submodules https://x-access-token:${GITHUB_TOKEN}@github.com/hazelcast/hazelcast-boshrelease.git || { echo "Check your GitHub Token!!" ; exit 1; }
-    git config --global user.email "${GITHUB_EMAIL}"
-    echo "Clonning tile repo..."
-    git clone https://x-access-token:${GITHUB_TOKEN}@github.com/hazelcast/hazelcast-pcf-tile.git || { echo "Check your GitHub Token!!" ; exit 1; }
-
     echo "Downloading jar/war(s)..."
     if wget -q "$HZ_EE_JAR_URL"; then
         echo "Hazelcast EE jar downloaded succesfully"
@@ -94,10 +80,6 @@ pushd $WORKSPACE
         echo "Management Center war download FAILED"
         exit 1;
     fi
-
-    # python libraries need gcc and python-dev to compile
-    apk add gcc musl-dev python-dev curl
-    pip install -r ./requirements.txt
 
     pushd ./hazelcast-boshrelease
         echo "Updating hazelcast versions at packages' spec..."
@@ -138,17 +120,6 @@ pushd $WORKSPACE
             echo "${RELEASE_VERSION} created and its assets are uploaded"
         fi
     popd
-
-    if wget -q "$PIVNET_CLI_URL"; then
-        chmod +x pivnet-linux-amd64-0.0.55
-        cp pivnet-linux-amd64-0.0.55 /usr/bin/pivnet
-        rm -rf pivnet-linux-amd64-0.0.55
-        echo "pivnet cli installed successfully."
-        pivnet login --api-token=${REFRESH_TOKEN}
-    else
-        echo "pivnet cli installation FAILED!"
-        exit 1;
-    fi
 
     pushd ./hazelcast-pcf-tile
         echo "Downloading On Demand Services Broker 0.25.0 BOSH release..."

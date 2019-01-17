@@ -123,6 +123,7 @@ pushd $WORKSPACE
 
     pushd ./hazelcast-pcf-tile
         echo "Downloading On Demand Services Broker 0.25.0 BOSH release..."
+        pivnet login --api-token=${REFRESH_TOKEN}
         pivnet download-product-files -p on-demand-services-sdk -r 0.25.0 -i 270128 -d ./resources
 
         echo "Downloading Routing 0.174.0 BOSH release..."

@@ -12,3 +12,6 @@ RUN mv /tmp/pivnet-linux-amd64-0.0.55 /usr/local/bin/pivnet
 RUN chmod 755 /usr/local/bin/pivnet
 
 RUN rm -rf /var/cache/apk/*
+
+RUN addgroup -g 1031 jenkins
+RUN adduser -D -h /home/jenkins -s /bin/bash -u 1030 -G jenkins jenkins

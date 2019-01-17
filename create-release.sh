@@ -68,7 +68,7 @@ MC_WAR_URL=https://download.hazelcast.com/management-center/hazelcast-management
 ROUTING_RELEASE_URL=https://github.com/cloudfoundry/routing-release/releases/download/0.174.0/routing-0.174.0.tgz
 PIVNET_CLI_URL=https://github.com/pivotal-cf/pivnet-cli/releases/download/v0.0.55/pivnet-linux-amd64-0.0.55
 
-pushd $HOME
+pushd $WORKSPACE
     echo "Clonning bosh-release repo..."
     git config --global credential.helper cache
     git clone --recurse-submodules https://x-access-token:${GITHUB_TOKEN}@github.com/hazelcast/hazelcast-boshrelease.git || { echo "Check your GitHub Token!!" ; exit 1; }
@@ -97,7 +97,7 @@ pushd $HOME
 
     # python libraries need gcc and python-dev to compile
     apk add gcc musl-dev python-dev curl
-    pip install -r $HOME/requirements.txt
+    pip install -r ./requirements.txt
 
     pushd ./hazelcast-boshrelease
         echo "Updating hazelcast versions at packages' spec..."

@@ -21,6 +21,11 @@ case $key in
     shift
     shift
     ;;
+    -ge|--github-email)
+    GITHUB_EMAIL="$2"
+    shift
+    shift
+    ;;
     -prt|--pivnet-refresh-token)
     REFRESH_TOKEN="$2"
     shift
@@ -51,6 +56,7 @@ set -- "${POSITIONAL[@]}"
 echo RELEASE VERSION = "${RELEASE_VERSION}"
 echo HAZELCAST VERSION = "${HZ_VERSION}"
 echo GITHUB TOKEN = "${GITHUB_TOKEN}"
+echo GITHUB EMAIL = "${GITHUB_EMAIL}"
 echo REFRESH_TOKEN = "${REFRESH_TOKEN}"
 echo AWS S3 ACCESS KEY = "${AWS_S3_ACCESS_KEY}"
 echo AWS S3 SECRET KEY = "${AWS_S3_SECRET_KEY}"
@@ -60,6 +66,9 @@ HZ_EE_JAR_URL=https://repository-hazelcast-l337.forge.cloudbees.com/release/com/
 MC_WAR_URL=https://download.hazelcast.com/management-center/hazelcast-management-center-${HZ_VERSION}.zip
 
 ROUTING_RELEASE_URL=https://github.com/cloudfoundry/routing-release/releases/download/0.174.0/routing-0.174.0.tgz
+
+echo "Configuring e-mail for github..."
+git config --global user.email "${GITHUB_EMAIL}"
 
 pushd $WORKSPACE
     echo "Downloading jar/war(s)..."

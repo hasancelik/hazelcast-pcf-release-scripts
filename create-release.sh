@@ -22,7 +22,7 @@ case $key in
     shift
     ;;
     -ge|--github-email)
-    GITHUB EMAIL="$2"
+    GITHUB_EMAIL="$2"
     shift
     shift
     ;;

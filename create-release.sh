@@ -12,29 +12,38 @@ case $key in
     shift
     ;;
     -v|--release-version)
-    {RELEASE_VERSION}="$2"
+    RELEASE_VERSION="$2"
     shift
     shift
     ;;
     -gt|--github-token)
-    {GITHUB_TOKEN}="$2"
+    GITHUB_TOKEN="$2"
     shift
     shift
     ;;
     -prt|--pivnet-refresh-token)
-    {REFRESH_TOKEN}="$2"
+    REFRESH_TOKEN="$2"
     shift
     shift
     ;;
     -s3a|--aws-s3-access-key)
-    {AWS_S3_ACCESS_KEY}="$2"
+    AWS_S3_ACCESS_KEY="$2"
     shift
     shift
     ;;
     -s3k|--aws-s3-secret-key)
-    {AWS_S3_SECRET_KEY}="$2"
+    AWS_S3_SECRET_KEY="$2"
     shift
     shift
+    ;;
+    --disable-deployment)
+    DEPLOYMENT_DISABLED="YES"
+    shift
+    ;;
+    *)
+    POSITIONAL+=("$1")
+    shift
+    ;;
 esac
 done
 set -- "${POSITIONAL[@]}"
@@ -43,8 +52,9 @@ echo RELEASE VERSION = "${RELEASE_VERSION}"
 echo HAZELCAST VERSION = "${HZ_VERSION}"
 echo GITHUB TOKEN = "${GITHUB_TOKEN}"
 echo REFRESH_TOKEN = "${REFRESH_TOKEN}"
-echo AWS_S3_ACCESS_KEY = "${AWS_S3_ACCESS_KEY}"
-echo AWS_S3_SECRET_KEY = "${AWS_S3_SECRET_KEY}"
+echo AWS S3 ACCESS KEY = "${AWS_S3_ACCESS_KEY}"
+echo AWS S3 SECRET KEY = "${AWS_S3_SECRET_KEY}"
+echo DEPLOYMENT DISABLED = "${DEPLOYMENT_DISABLED}"
 
 HZ_EE_JAR_URL=https://repository-hazelcast-l337.forge.cloudbees.com/release/com/hazelcast/hazelcast-enterprise/${HZ_VERSION}/hazelcast-enterprise-${HZ_VERSION}.jar
 MC_WAR_URL=https://download.hazelcast.com/management-center/hazelcast-management-center-${HZ_VERSION}.zip
@@ -109,11 +119,13 @@ pushd $HOME
         echo "Creating hazelcast bosh-release tar.gz..."
         bosh create-release --version ${RELEASE_VERSION} --tarball ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz
 
-        echo "Pushing changes to master..."
-        git push origin master
-        git tag v${RELEASE_VERSION}
-        git push --tags
-        echo "v${RELEASE_VERSION} pushed to master"
+        if [[ ! -v DEPLOYMENT_DISABLED ]]; then
+            echo "Pushing changes to master..."
+            git push origin master
+            git tag v${RELEASE_VERSION}
+            git push --tags
+            echo "v${RELEASE_VERSION} pushed to master"
+        fi
 
         echo "Creating release at hazelcast/hazelcast-boshrelease repo"
         python ../create_release_upload_asset.py -r hazelcast/hazelcast-boshrelease -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz

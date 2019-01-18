@@ -5,7 +5,7 @@ RUN apk add --update \
     musl-dev \
     python-dev \
     curl
-RUN pip install ruamel.yaml==0.15.85 PyGithub==1.43.4
+RUN pip install --upgrade ruamel.yaml==0.15.85 PyGithub==1.43.4 awscli==1.15.5
 
 RUN wget -O /tmp/pivnet-linux-amd64-0.0.55 https://github.com/pivotal-cf/pivnet-cli/releases/download/v0.0.55/pivnet-linux-amd64-0.0.55
 RUN mv /tmp/pivnet-linux-amd64-0.0.55 /usr/local/bin/pivnet

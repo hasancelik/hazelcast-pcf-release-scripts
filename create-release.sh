@@ -16,6 +16,11 @@ case $key in
     shift
     shift
     ;;
+    -v|--release-type)
+    RELEASE_TYPE="$2"
+    shift
+    shift
+    ;;
     -gt|--github-token)
     GITHUB_TOKEN="$2"
     shift
@@ -54,13 +59,19 @@ done
 set -- "${POSITIONAL[@]}"
 
 echo RELEASE VERSION = "${RELEASE_VERSION}"
+# Minor Release, Major Release, Release Candidate
+echo RELEASE TYPE = "${RELEASE_TYPE}"
 echo HAZELCAST VERSION = "${HZ_VERSION}"
 echo GITHUB TOKEN = "${GITHUB_TOKEN}"
 echo GITHUB EMAIL = "${GITHUB_EMAIL}"
-echo REFRESH_TOKEN = "${REFRESH_TOKEN}"
+echo REFRESH TOKEN = "${REFRESH_TOKEN}"
 echo AWS S3 ACCESS KEY = "${AWS_S3_ACCESS_KEY}"
 echo AWS S3 SECRET KEY = "${AWS_S3_SECRET_KEY}"
 echo DEPLOYMENT DISABLED = "${DEPLOYMENT_DISABLED}"
+
+PRODUCT_SLUG_NAME="hazelcast-pcf"
+EULA_SLUG_NAME="hazelcast-eula"
+DOCS_URL="https://github.com/pivotal-cf/docs-hazelcast"
 
 HZ_EE_JAR_URL=https://repository-hazelcast-l337.forge.cloudbees.com/release/com/hazelcast/hazelcast-enterprise/${HZ_VERSION}/hazelcast-enterprise-${HZ_VERSION}.jar
 MC_WAR_URL=https://download.hazelcast.com/management-center/hazelcast-management-center-${HZ_VERSION}.zip
@@ -131,8 +142,8 @@ pushd $WORKSPACE
     popd
 
     pushd ./hazelcast-pcf-tile
+        pivnet login --api-token=${REFRESH_TOKEN} || { echo 'Could not login to piv-net.Check REFRESH TOKEN!' ; exit 1; }
         echo "Downloading On Demand Services Broker 0.25.0 BOSH release..."
-        pivnet login --api-token=${REFRESH_TOKEN}
         pivnet download-product-files -p on-demand-services-sdk -r 0.25.0 -i 270128 -d ./resources
 
         echo "Downloading Routing 0.174.0 BOSH release..."
@@ -149,7 +160,61 @@ pushd $WORKSPACE
         echo "Modifying tile.yml..."
         python ../modify_tile_yml.py -v ${RELEASE_VERSION} -f ./tile.yml
 
-        tile build ${RELEASE_VERSION}
+        echo "Creating .pivotal file..."
+        if tile build ${RELEASE_VERSION}; then
+            echo "hazelcast-pcf-" + ${RELEASE_VERSION} + ".pivotal created succesfully"
+        else
+            echo "Error creating hazelcast-pcf-" + ${RELEASE_VERSION} + ".pivotal!"
+            exit 1;
+        fi
+
+        git add . && git commit -m "upgraded hazelcast and mancenter to ${HZ_VERSION} for ${RELEASE_VERSION} release"
+
+        if [[ ! -v DEPLOYMENT_DISABLED ]]; then
+            echo "Pushing changes to master..."
+            git push origin master
+            git tag v${RELEASE_VERSION}
+            git push --tags
+            echo "v${RELEASE_VERSION} pushed to master"
+
+            echo "Creating release at hazelcast/hazelcast-boshrelease repo"
+            python ../create_release_upload_asset.py -r hazelcast/hazelcast-pcf-tile -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal
+            echo "${RELEASE_VERSION} created and its assets are uploaded"
+
+            PIVNET_ACCESS_TOKEN=`curl -s https://network.pivotal.io/api/v2/authentication/access_tokens -d "{\"refresh_token\":\"${REFRESH_TOKEN}\"}" | jq -r '.access_token'`
+            if [ -z "${PIVNET_ACCESS_TOKEN}" ] || [ "${PIVNET_ACCESS_TOKEN}" = "null" ]
+                then
+                    echo "Error getting PivNet access token!"
+                    exit 1
+            fi
+
+            IFS=',' read AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN s3Bucket s3Region < <(curl -s https://network.pivotal.io/api/v2/federation_token -d "{\"product_id\": \"${PRODUCT_SLUG_NAME}\"}"  -H "Authorization: Bearer ${PIVNET_ACCESS_TOKEN}" | jq -r '[.access_key_id, .secret_access_key, .session_token, .bucket, .region] | @csv' | sed 's/"//g')
+            if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ "${AWS_ACCESS_KEY_ID}" = "null" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ] || [ "${AWS_SECRET_ACCESS_KEY}" = "null" ] || [ -z "${AWS_SESSION_TOKEN}" ] || [ "${AWS_SESSION_TOKEN}" = "null" ]
+                then
+                    echo "Error getting PivNet AWS credentials!"
+                    exit 1
+            fi
+            export AWS_ACCESS_KEY_ID
+            export AWS_SECRET_ACCESS_KEY
+            export AWS_SESSION_TOKEN
+
+            echo "Uploading .pivotal file to PivNet's S3 bucket..."
+            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast-pcf-${RELEASE_VERSION}.pivotal --region $s3Region
+
+            FILE_SHA256=`sha256sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
+
+            echo "Adding product file to PivNet..."
+            PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --docs-url=${DOCS_URL} | jq '.product_file.id'`
+            if [ -z "$PRODUCT_FILE_ID" ]
+            then
+	            echo "Error adding product file"
+                exit 1
+            else
+                echo "Added file hazelcast-pcf-${RELEASE_VERSION}.pivotal. Product file ID: ${PRODUCT_FILE_ID}"
+            fi
+
+            RELEASE_ID=pivnet --format=json create-release -p ${PRODUCT_SLUG_NAME} -r ${RELEASE_VERSION} -t ${RELEASE_TYPE} -e ${EULA_SLUG_NAME} | jq -r '.id'
+        fi
     popd
 popd
 

@@ -203,6 +203,11 @@ pushd $WORKSPACE
                     exit 1
             fi
 
+            echo ${AWS_ACCESS_KEY_ID}
+            echo ${AWS_SECRET_ACCESS_KEY}
+            echo ${AWS_SESSION_TOKEN}
+            aws s3 ls s3://$s3Bucket/partner-product-files/
+
             echo "Uploading .pivotal file to PivNet's S3 bucket..."
             aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal --region $s3Region || { echo 'Could not upload .pivotal file to S3 Bucket!' ; exit 1; }
 

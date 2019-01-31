@@ -194,22 +194,23 @@ pushd $WORKSPACE
             fi
 
             IFS=',' read AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN s3Bucket s3Region < <(curl -s https://network.pivotal.io/api/v2/federation_token -d "{\"product_id\": \"${PRODUCT_SLUG_NAME}\"}"  -H "Authorization: Bearer ${PIVNET_ACCESS_TOKEN}" | jq -r '[.access_key_id, .secret_access_key, .session_token, .bucket, .region] | @csv' | sed 's/"//g')
+            export AWS_ACCESS_KEY_ID
+            export AWS_SECRET_ACCESS_KEY
+            export AWS_SESSION_TOKEN
             if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ "${AWS_ACCESS_KEY_ID}" = "null" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ] || [ "${AWS_SECRET_ACCESS_KEY}" = "null" ] || [ -z "${AWS_SESSION_TOKEN}" ] || [ "${AWS_SESSION_TOKEN}" = "null" ]
                 then
                     echo "Error getting PivNet AWS credentials!"
                     exit 1
             fi
-            export AWS_ACCESS_KEY_ID
-            export AWS_SECRET_ACCESS_KEY
-            export AWS_SESSION_TOKEN
 
             echo "Uploading .pivotal file to PivNet's S3 bucket..."
-            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal --region $s3Region
+            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal --region $s3Region || { echo 'Could not upload .pivotal file to S3 Bucket!' ; exit 1; }
 
             FILE_SHA256=`sha256sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
+            FILE_MD5=`md5sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
 
             echo "Adding .pivotal file to PivNet..."
-            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --docs-url=${DOCS_URL} | jq '.product_file.id'`
+            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --md5=${FILE_MD5} --docs-url=${DOCS_URL} | jq '.product_file.id'`
             if [ -z "$TILE_PRODUCT_FILE_ID" ]
             then
 	            echo "Error adding product file"

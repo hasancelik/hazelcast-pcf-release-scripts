@@ -50,6 +50,10 @@ case $key in
     DEPLOYMENT_DISABLED="YES"
     shift
     ;;
+    --deploy-OSDF-manually)
+    DEPLOY_OSDF_MANUALLY="YES"
+    shift
+    ;;
     *)
     POSITIONAL+=("$1")
     shift
@@ -68,6 +72,7 @@ echo REFRESH TOKEN = "${REFRESH_TOKEN}"
 echo AWS S3 ACCESS KEY = "${AWS_S3_ACCESS_KEY}"
 echo AWS S3 SECRET KEY = "${AWS_S3_SECRET_KEY}"
 echo DEPLOYMENT DISABLED = "${DEPLOYMENT_DISABLED}"
+echo DEPLOY OSDF MANUALLY = "${DEPLOY_OSDF_MANUALLY}"
 
 PRODUCT_SLUG_NAME="hazelcast-pcf"
 EULA_SLUG_NAME="hazelcast-eula"
@@ -203,17 +208,45 @@ pushd $WORKSPACE
 
             FILE_SHA256=`sha256sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
 
-            echo "Adding product file to PivNet..."
-            PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --docs-url=${DOCS_URL} | jq '.product_file.id'`
-            if [ -z "$PRODUCT_FILE_ID" ]
+            echo "Adding .pivotal file to PivNet..."
+            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --docs-url=${DOCS_URL} | jq '.product_file.id'`
+            if [ -z "$TILE_PRODUCT_FILE_ID" ]
             then
 	            echo "Error adding product file"
                 exit 1
             else
-                echo "Added file hazelcast-pcf-${RELEASE_VERSION}.pivotal. Product file ID: ${PRODUCT_FILE_ID}"
+                echo "Added file hazelcast-pcf-${RELEASE_VERSION}.pivotal. Product file ID: ${TILE_PRODUCT_FILE_ID}"
             fi
 
-            RELEASE_ID=pivnet --format=json create-release -p ${PRODUCT_SLUG_NAME} -r ${RELEASE_VERSION} -t ${RELEASE_TYPE} -e ${EULA_SLUG_NAME} | jq -r '.id'
+            if [[ ! -v DEPLOY_OSDF_MANUALLY ]]; then
+                LATEST_RELEASE_VERSION = `pivnet --format json releases -p hazelcast-pcf | jq .[0].version | sed 's/"//g'`
+                LATEST_OSDF_FILE_ID = `pivnet --format json product-files -p ${PRODUCT_SLUG_NAME} -r ${LATEST_RELEASE_VERSION} | jq '.[] | select(.file_type=="Open Source License") | .id'`
+
+                echo "Downloading latest OSDF file from PivNet..."
+                if pivnet download-product-files -p ${PRODUCT_SLUG_NAME} -r ${LATEST_RELEASE_VERSION} -i ${LATEST_OSDF_FILE_ID}; then
+	                echo "Latest OSDF file(${LATEST_RELEASE_VERSION} - ${LATEST_OSDF_FILE_ID}) downloaded succesfully."
+                else
+	                echo "Latest OSDF file(${LATEST_RELEASE_VERSION}) download failed!"
+	                exit 1
+                fi
+
+                sed -i -e "s/${LATEST_RELEASE_VERSION}.txt/${RELEASE_VERSION}.txt/g" open_source_disclosures_Hazelcast_for_PCF-${LATEST_RELEASE_VERSION}.txt
+                mv open_source_disclosures_Hazelcast_for_PCF-${LATEST_RELEASE_VERSION}.txt ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt
+
+                echo "Uploading .pivotal file to PivNet's S3 bucket..."
+                aws s3 cp ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt s3://$s3Bucket/partner-product-files/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt --region $s3Region
+
+                echo "Adding OSDF file to PivNet..."
+                OSDF_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Open Source Disclosures Hazelcast for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt" --file-type='Open Source License' --file-version=${RELEASE_VERSION} | jq '.product_file.id'`
+                if [ -z "$OSDF_PRODUCT_FILE_ID" ]
+                then
+                    echo "Error adding product file"
+                    exit 1
+                else
+                    echo "Added file open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt. Product file ID: ${OSDF_PRODUCT_FILE_ID}"
+                fi
+            fi
+            #RELEASE_ID=`pivnet --format=json create-release -p ${PRODUCT_SLUG_NAME} -r ${RELEASE_VERSION} -t ${RELEASE_TYPE} -e ${EULA_SLUG_NAME} | jq -r '.id'`
         fi
     popd
 popd

@@ -169,7 +169,7 @@ pushd $WORKSPACE
         if tile build ${RELEASE_VERSION}; then
             echo "hazelcast-pcf-" + ${RELEASE_VERSION} + ".pivotal created succesfully"
         else
-            echo "Error creating hazelcast-pcf-" + ${RELEASE_VERSION} + ".pivotal!"
+            echo "Error creating hazelcast-pcf-${RELEASE_VERSION}.pivotal!"
             exit 1;
         fi
 

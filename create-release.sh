@@ -16,7 +16,7 @@ case $key in
     shift
     shift
     ;;
-    -v|--release-type)
+    -t|--release-type)
     RELEASE_TYPE="$2"
     shift
     shift

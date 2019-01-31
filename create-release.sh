@@ -133,17 +133,17 @@ pushd $WORKSPACE
         echo "Creating hazelcast bosh-release tar.gz..."
         bosh create-release --version ${RELEASE_VERSION} --tarball ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz
 
-        if [[ ! -v DEPLOYMENT_DISABLED ]]; then
-            echo "Pushing changes to master..."
-            git push origin master
-            git tag v${RELEASE_VERSION}
-            git push --tags
-            echo "v${RELEASE_VERSION} pushed to master"
+        # if [[ ! -v DEPLOYMENT_DISABLED ]]; then
+        #     echo "Pushing changes to master..."
+        #     git push origin master
+        #     git tag v${RELEASE_VERSION}
+        #     git push --tags
+        #     echo "v${RELEASE_VERSION} pushed to master"
 
-            echo "Creating release at hazelcast/hazelcast-boshrelease repo"
-            python ../create_release_upload_asset.py -r hazelcast/hazelcast-boshrelease -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz
-            echo "${RELEASE_VERSION} created and its assets are uploaded"
-        fi
+        #     echo "Creating release at hazelcast/hazelcast-boshrelease repo"
+        #     python ../create_release_upload_asset.py -r hazelcast/hazelcast-boshrelease -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ../hazelcast-boshrelease-${RELEASE_VERSION}.tgz
+        #     echo "${RELEASE_VERSION} created and its assets are uploaded"
+        # fi
     popd
 
     pushd ./hazelcast-pcf-tile
@@ -176,15 +176,15 @@ pushd $WORKSPACE
         git add . && git commit -m "upgraded hazelcast and mancenter to ${HZ_VERSION} for ${RELEASE_VERSION} release"
 
         if [[ ! -v DEPLOYMENT_DISABLED ]]; then
-            echo "Pushing changes to master..."
-            git push origin master
-            git tag v${RELEASE_VERSION}
-            git push --tags
-            echo "v${RELEASE_VERSION} pushed to master"
+            # echo "Pushing changes to master..."
+            # git push origin master
+            # git tag v${RELEASE_VERSION}
+            # git push --tags
+            # echo "v${RELEASE_VERSION} pushed to master"
 
-            echo "Creating release at hazelcast/hazelcast-boshrelease repo"
-            python ../create_release_upload_asset.py -r hazelcast/hazelcast-pcf-tile -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal
-            echo "${RELEASE_VERSION} created and its assets are uploaded"
+            # echo "Creating release at hazelcast/hazelcast-boshrelease repo"
+            # python ../create_release_upload_asset.py -r hazelcast/hazelcast-pcf-tile -t ${GITHUB_TOKEN} -v ${RELEASE_VERSION} -hzv ${HZ_VERSION} -a ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal
+            # echo "${RELEASE_VERSION} created and its assets are uploaded"
 
             PIVNET_ACCESS_TOKEN=`curl -s https://network.pivotal.io/api/v2/authentication/access_tokens -d "{\"refresh_token\":\"${REFRESH_TOKEN}\"}" | jq -r '.access_token'`
             if [ -z "${PIVNET_ACCESS_TOKEN}" ] || [ "${PIVNET_ACCESS_TOKEN}" = "null" ]
@@ -204,12 +204,12 @@ pushd $WORKSPACE
             export AWS_SESSION_TOKEN
 
             echo "Uploading .pivotal file to PivNet's S3 bucket..."
-            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast-pcf-${RELEASE_VERSION}.pivotal --region $s3Region
+            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal --region $s3Region
 
             FILE_SHA256=`sha256sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
 
             echo "Adding .pivotal file to PivNet..."
-            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --docs-url=${DOCS_URL} | jq '.product_file.id'`
+            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --docs-url=${DOCS_URL} | jq '.product_file.id'`
             if [ -z "$TILE_PRODUCT_FILE_ID" ]
             then
 	            echo "Error adding product file"
@@ -219,8 +219,8 @@ pushd $WORKSPACE
             fi
 
             if [[ ! -v DEPLOY_OSDF_MANUALLY ]]; then
-                LATEST_RELEASE_VERSION = `pivnet --format json releases -p hazelcast-pcf | jq .[0].version | sed 's/"//g'`
-                LATEST_OSDF_FILE_ID = `pivnet --format json product-files -p ${PRODUCT_SLUG_NAME} -r ${LATEST_RELEASE_VERSION} | jq '.[] | select(.file_type=="Open Source License") | .id'`
+                LATEST_RELEASE_VERSION=`pivnet --format json releases -p hazelcast-pcf | jq .[0].version | sed 's/"//g'`
+                LATEST_OSDF_FILE_ID=`pivnet --format json product-files -p ${PRODUCT_SLUG_NAME} -r ${LATEST_RELEASE_VERSION} | jq '.[] | select(.file_type=="Open Source License") | .id'`
 
                 echo "Downloading latest OSDF file from PivNet..."
                 if pivnet download-product-files -p ${PRODUCT_SLUG_NAME} -r ${LATEST_RELEASE_VERSION} -i ${LATEST_OSDF_FILE_ID}; then
@@ -234,10 +234,10 @@ pushd $WORKSPACE
                 mv open_source_disclosures_Hazelcast_for_PCF-${LATEST_RELEASE_VERSION}.txt ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt
 
                 echo "Uploading .pivotal file to PivNet's S3 bucket..."
-                aws s3 cp ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt s3://$s3Bucket/partner-product-files/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt --region $s3Region
+                aws s3 cp ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt s3://$s3Bucket/partner-product-files/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}-test.txt --region $s3Region
 
                 echo "Adding OSDF file to PivNet..."
-                OSDF_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Open Source Disclosures Hazelcast for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt" --file-type='Open Source License' --file-version=${RELEASE_VERSION} | jq '.product_file.id'`
+                OSDF_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Open Source Disclosures Hazelcast for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}-test.txt" --file-type='Open Source License' --file-version=${RELEASE_VERSION} | jq '.product_file.id'`
                 if [ -z "$OSDF_PRODUCT_FILE_ID" ]
                 then
                     echo "Error adding product file"

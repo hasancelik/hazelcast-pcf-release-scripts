@@ -204,13 +204,13 @@ pushd $WORKSPACE
             fi
 
             echo "Uploading .pivotal file to PivNet's S3 bucket..."
-            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal --region $s3Region || { echo 'Could not upload .pivotal file to S3 Bucket!' ; exit 1; }
+            aws s3 cp ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal s3://$s3Bucket/partner-product-files/hazelcast/hazelcast-pcf-${RELEASE_VERSION}-test-2.pivotal --region $s3Region || { echo 'Could not upload .pivotal file to S3 Bucket!' ; exit 1; }
 
             FILE_SHA256=`sha256sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
             FILE_MD5=`md5sum ./product/hazelcast-pcf-${RELEASE_VERSION}.pivotal | cut -f1 -d ' '`
 
             echo "Adding .pivotal file to PivNet..."
-            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast/hazelcast-pcf-${RELEASE_VERSION}-test.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --md5=${FILE_MD5} --docs-url=${DOCS_URL} | jq '.product_file.id'`
+            TILE_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Hazelcast IMDG for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast/hazelcast-pcf-${RELEASE_VERSION}-test-2.pivotal" --file-type='Software' --file-version=${RELEASE_VERSION} --sha256=${FILE_SHA256} --md5=${FILE_MD5} --docs-url=${DOCS_URL} | jq '.id'`
             if [ -z "$TILE_PRODUCT_FILE_ID" ]
             then
 	            echo "Error adding product file"
@@ -235,10 +235,12 @@ pushd $WORKSPACE
                 mv open_source_disclosures_Hazelcast_for_PCF-${LATEST_RELEASE_VERSION}.txt ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt
 
                 echo "Uploading .pivotal file to PivNet's S3 bucket..."
-                aws s3 cp ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt s3://$s3Bucket/partner-product-files/hazelcast/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}-test.txt --region $s3Region
+                aws s3 cp ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt s3://$s3Bucket/partner-product-files/hazelcast/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}-test-2.txt --region $s3Region
+
+                OSDF_FILE_MD5=`md5sum ./open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}.txt | cut -f1 -d ' '`
 
                 echo "Adding OSDF file to PivNet..."
-                OSDF_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Open Source Disclosures Hazelcast for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}-test.txt" --file-type='Open Source License' --file-version=${RELEASE_VERSION} | jq '.product_file.id'`
+                OSDF_PRODUCT_FILE_ID=`pivnet --format=json create-product-file --product-slug="hazelcast-pcf" --name="Open Source Disclosures Hazelcast for PCF ${RELEASE_VERSION}" --aws-object-key="partner-product-files/hazelcast/open_source_disclosures_Hazelcast_for_PCF-${RELEASE_VERSION}-test-2.txt" --file-type='Open Source License' --file-version=${RELEASE_VERSION} --md5=${OSDF_FILE_MD5} | jq '.id'`
                 if [ -z "$OSDF_PRODUCT_FILE_ID" ]
                 then
                     echo "Error adding product file"
